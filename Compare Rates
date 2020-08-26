@@ -1,0 +1,75 @@
+Sub Rate_Compare()
+
+Dim wb As Workbook
+Dim contract As Worksheet
+Dim bid As Worksheet
+Dim Compare As Worksheet
+Set wb = Excel.ActiveWorkbook
+Set contract = wb.Worksheets("CONTRACT")
+Set bid = wb.Worksheets("BID")
+Set Compare = wb.Worksheets("COMPARE")
+
+
+Dim i As Integer
+Dim d As Integer
+Dim c As Integer
+
+Dim background As Boolean
+
+Application.ScreenUpdating = False
+
+i = 2
+d = 2
+c = 2
+
+background = True
+
+Do Until bid.Range("C" & i) = "" Or IsEmpty(bid.Range("C" & i)) = True
+
+If contract.Range("A:A").Find(What:=bid.Range("A" & i).Value, LookIn:=xlValues) Is Nothing Then
+    
+    i = i + 1
+        
+Else
+    Compare.Range("A" & c) = bid.Range("B" & i)
+    Compare.Range("B" & c) = bid.Range("C" & i)
+    Compare.Range("C" & c) = bid.Range("D" & i)
+    Compare.Range("D" & c) = bid.Range("E" & i)
+    Compare.Range("E" & c) = bid.Range("F" & i)
+    Compare.Range("F" & c) = "=BID!" & bid.Range("G" & i).Address
+    Compare.Range("G" & c) = "=BID!" & bid.Range("H" & i).Address
+    Compare.Range("H" & c) = "=BID!" & bid.Range("I" & i).Address
+    Compare.Range("J" & c) = Application.WorksheetFunction.VLookup(bid.Range("A" & i).Value, contract.Range("A:L"), 9, False)
+    Compare.Range("K" & c) = Application.WorksheetFunction.VLookup(bid.Range("A" & i).Value, contract.Range("A:L"), 10, False)
+    Compare.Range("L" & c) = Application.WorksheetFunction.VLookup(bid.Range("A" & i).Value, contract.Range("A:L"), 11, False)
+    Compare.Range("M" & c) = Application.WorksheetFunction.VLookup(bid.Range("A" & i).Value, contract.Range("A:L"), 8, False)
+    Compare.Range("O" & c).Formula = "=IF(OR(J" & c & "="""",F" & c & "=0),"""",F" & c & "-J" & c & ")"
+    Compare.Range("P" & c).Formula = "=IF(OR(K" & c & "="""",G" & c & "=0),"""",G" & c & "-K" & c & ")"
+    Compare.Range("Q" & c).Formula = "=IF(OR(L" & c & "="""",H" & c & "=0),"""",H" & c & "-L" & c & ")"
+    
+    Select Case background
+    Case Is = True
+        Compare.Range("A" & c & ":M" & c).Interior.Color = RGB(217, 225, 242)
+        Compare.Range("O" & c & ":Q" & c).Interior.Color = RGB(215, 225, 255)
+        background = False
+    Case Is = False
+        Compare.Range("A" & c & ":M" & c).Interior.Color = RGB(226, 239, 218)
+        Compare.Range("O" & c & ":Q" & c).Interior.Color = RGB(225, 255, 215)
+        background = True
+    End Select
+    
+    Compare.Range("I" & c).Interior.Color = RGB(128, 128, 128)
+    Compare.Range("N" & c).Interior.Color = RGB(0, 0, 0)
+    
+    i = i + 1
+    c = c + 1
+        
+End If
+
+Loop
+
+Compare.Columns("A:N").EntireColumn.AutoFit
+
+Application.ScreenUpdating = True
+
+End Sub
