@@ -1,0 +1,338 @@
+Sub Import_Bid_Offers()
+
+Dim wb As Workbook
+Dim ws As Worksheet
+Set wb = Excel.ActiveWorkbook
+Set ws = wb.Worksheets("BID")
+
+If ws.Range("N1") = "" Then
+    MsgBox "Please enter a contract name into N1."
+    GoTo MacroExit
+End If
+
+Application.ScreenUpdating = False
+
+Dim twb As Workbook
+Set twb = Excel.Workbooks(ws.Range("N1").Value)
+
+Dim POR As String
+Dim POL As String
+Dim POD As String
+Dim FPOD As String
+Dim Mode As String
+Dim st20 As String
+Dim st40 As String
+Dim hc40 As String
+Dim hc45 As String
+Dim Volume As String
+
+Dim rateColumn As Integer
+Dim rateColumn2 As Integer
+Dim DTHC As Integer
+Dim DTHC2 As Integer
+Dim BAF As Integer
+Dim BAF2 As Integer
+Dim custBAF As Integer
+Dim amountBAF As String
+Dim amountBAF2 As String
+
+Dim i As Integer
+Dim d As Integer
+Dim x As String
+Dim y As String
+
+twb.Worksheets("SUBMISSION").Activate
+
+If Range("A3:CC3").Find(What:="RD1 TOTAL ALL IN", LookAt:=xlWhole, SearchOrder:=xlByColumns) Is Nothing Then
+    rateColumn = Range("A3:CC3").Find(What:="20' RD1 ALL IN", LookAt:=xlWhole, SearchOrder:=xlByColumns).Column
+    rateColumn2 = Range("A3:CC3").Find(What:="40' RD1 ALL IN", LookAt:=xlWhole, SearchOrder:=xlByColumns).Column
+Else
+    rateColumn = Range("A3:CC3").Find(What:="RD1 TOTAL ALL IN", LookAt:=xlWhole, SearchOrder:=xlByColumns).Column
+    rateColumn2 = 0
+End If
+If Range("A3:CC3").Find(What:="DTHC", LookAt:=xlWhole, SearchOrder:=xlByColumns) Is Nothing Then
+    DTHC = Range("A3:CC3").Find(What:="DTHC 20'", LookAt:=xlWhole, SearchOrder:=xlByColumns).Column
+    DTHC2 = Range("A3:CC3").Find(What:="DTHC 40'", LookAt:=xlWhole, SearchOrder:=xlByColumns).Column
+Else
+    DTHC = Range("A3:CC3").Find(What:="DTHC", LookAt:=xlWhole, SearchOrder:=xlByColumns).Column
+    DTHC2 = 0
+End If
+If Range("A3:CC3").Find(What:="BAF", LookAt:=xlWhole, SearchOrder:=xlByColumns) Is Nothing Then
+    BAF = Range("A3:CC3").Find(What:="BAF 20'", LookAt:=xlWhole, SearchOrder:=xlByColumns).Column
+    BAF2 = Range("A3:CC3").Find(What:="BAF 40'", LookAt:=xlWhole, SearchOrder:=xlByColumns).Column
+Else
+    BAF = Range("A3:CC3").Find(What:="BAF", LookAt:=xlWhole, SearchOrder:=xlByColumns).Column
+    BAF2 = 0
+End If
+If Range("A3:CC3").Find(What:="CUSTOMER BAF", LookAt:=xlWhole, SearchOrder:=xlByColumns) Is Nothing Then
+    custBAF = 0
+Else
+    custBAF = Range("A3:CC3").Find(What:="CUSTOMER BAF", LookAt:=xlWhole, SearchOrder:=xlByColumns).Column
+End If
+
+
+d = 2
+i = 4
+
+Do Until (IsEmpty("A" & i) = True) Or (Range("A" & i) = "")
+
+If UCase(Cells(i, Range("A3:CC3").Find(What:="ORIGIN MOVE TYPE", LookAt:=xlWhole, SearchOrder:=xlByColumns).Column)) = "DOOR" Or UCase(Cells(i, Range("A3:CC3").Find(What:="ORIGIN MOVE TYPE", LookAt:=xlWhole, SearchOrder:=xlByColumns).Column)) = "RAMP" Then
+    POR = Cells(i, Range("A3:CC3").Find(What:="ORIGIN ADDRESS", LookAt:=xlWhole, SearchOrder:=xlByColumns).Column)
+Else: POR = ""
+End If
+
+    If rateColumn2 = 0 Then
+        x = "DESTINATION MOVE TYPE"
+    Else
+        x = "DEST MOVE TYPE"
+    End If
+    
+    If Range("A3:CC3").Find(What:="DEST CITY", LookAt:=xlWhole, SearchOrder:=xlByColumns) Is Nothing Then
+        y = "DESTINATION CITY"
+    Else
+        y = "DEST CITY"
+    End If
+    
+   
+If UCase(Cells(i, Range("A3:CC3").Find(What:=x, LookAt:=xlWhole, SearchOrder:=xlByColumns).Column)) = "DOOR" Or UCase(Cells(i, Range("A3:CC3").Find(What:=x, LookAt:=xlWhole, SearchOrder:=xlByColumns).Column)) = "RAMP" Then
+    Dim cCode As String
+    cCode = Cells(i, Range("A3:CC3").Find(What:=y, LookAt:=xlWhole, SearchOrder:=xlByColumns).Column + 1)
+    cCode = wb.Worksheets("Port Codes").Range("G" & wb.Worksheets("Port Codes").Range("H:H").Find(What:=cCode, LookAt:=xlWhole).Row)
+    FPOD = Cells(i, Range("A3:CC3").Find(What:=y, LookAt:=xlWhole, SearchOrder:=xlByColumns).Column) & ", " & cCode
+Else: FPOD = ""
+End If
+
+POL = Trim(Cells(i, Range("A3:CC3").Find(What:="POL", LookAt:=xlWhole, SearchOrder:=xlByColumns).Column))
+POD = Trim(Cells(i, Range("A3:CC3").Find(What:="POD", LookAt:=xlWhole, SearchOrder:=xlByColumns).Column))
+
+If POL = "DECLINE" Or POD = "DECLINE" Then
+    d = d - 1
+    GoTo Skip
+End If
+
+If rateColumn2 = 0 Then
+    x = "EST. VOLUME IN TEU'S"
+Else
+    x = "VOL IN TEU'S"
+End If
+Volume = Cells(i, Range("A3:CC3").Find(What:=x, LookAt:=xlWhole, SearchOrder:=xlByColumns).Column)
+
+If rateColumn2 = 0 Then
+    If custBAF = 0 Then
+        amountBAF = Cells(i, BAF).Value
+    Else
+        If Cells(i, custBAF).Value = "" Or IsEmpty(custBAF) = True Then
+            amountBAF = Cells(i, BAF).Value
+        Else
+            amountBAF = Cells(i, custBAF).Value
+        End If
+    End If
+Else
+        amountBAF = Cells(i, BAF).Value
+        amountBAF2 = Cells(i, BAF2).Value
+End If
+
+If rateColumn2 = 0 Then
+    x = "CNTR TYPE"
+Else
+    x = "CONT. TYPE (STD,HC,FL,OT)"
+End If
+
+If Cells(i, Range("A3:CC3").Find(What:=x, LookAt:=xlWhole, SearchOrder:=xlByColumns).Column) = "TK" Then
+
+ws.Range("L" & d) = "TK"
+
+If rateColumn2 = 0 Then
+Select Case Cells(i, Range("A3:CC3").Find(What:=x, LookAt:=xlWhole, SearchOrder:=xlByColumns).Column)
+Case Is = "20"
+            st20 = Cells(i, rateColumn).Value - Cells(i, DTHC).Value - amountBAF
+            st40 = ""
+            hc40 = ""
+            hc45 = ""
+            
+Case Is = "40"
+            st20 = ""
+            st40 = Cells(i, rateColumn).Value - Cells(i, DTHC).Value - amountBAF
+            hc40 = Cells(i, rateColumn).Value - Cells(i, DTHC).Value - amountBAF
+            hc45 = ""
+    
+End Select
+Else
+    st20 = Cells(i, rateColumn).Value - Cells(i, DTHC).Value - amountBAF
+    st40 = Cells(i, rateColumn2).Value - Cells(i, DTHC2).Value - amountBAF2
+    hc40 = Cells(i, rateColumn2).Value - Cells(i, DTHC2).Value - amountBAF2
+End If
+
+Else
+
+If rateColumn2 = 0 Then
+
+Select Case Cells(i, Range("A3:CC3").Find(What:="CNTR SIZE", LookAt:=xlWhole, SearchOrder:=xlByColumns).Column) & Cells(i, Range("A3:CC3").Find(What:=x, LookAt:=xlWhole, SearchOrder:=xlByColumns).Column)
+Case Is = "20ST"
+
+            st20 = Cells(i, rateColumn).Value - Cells(i, DTHC).Value - amountBAF
+            st40 = ""
+            hc40 = ""
+            hc45 = ""
+            
+Case Is = "40ST"
+    
+            st20 = ""
+            st40 = Cells(i, rateColumn).Value - Cells(i, DTHC).Value - amountBAF
+            hc40 = Cells(i, rateColumn).Value - Cells(i, DTHC).Value - amountBAF
+            hc45 = ""
+            
+Case Is = "40HC"
+     
+            st20 = ""
+            st40 = Cells(i, rateColumn).Value - Cells(i, DTHC).Value - amountBAF
+            hc40 = Cells(i, rateColumn).Value - Cells(i, DTHC).Value - amountBAF
+            hc45 = ""
+            
+
+Case Is = "45" & "**"
+   
+            st20 = ""
+            st40 = ""
+            hc40 = ""
+            hc45 = Cells(i, rateColumn).Value - Cells(, DTHC).Value - amountBAF
+            
+
+Case Else
+End Select
+
+Else
+
+    st20 = Cells(i, rateColumn).Value - Cells(i, DTHC).Value - amountBAF
+    st40 = Cells(i, rateColumn2).Value - Cells(i, DTHC2).Value - amountBAF2
+    hc40 = Cells(i, rateColumn2).Value - Cells(i, DTHC2).Value - amountBAF2
+    
+
+End If
+
+End If
+
+ws.Range("B" & d) = POR
+ws.Range("C" & d) = POL
+ws.Range("D" & d) = POD
+ws.Range("E" & d) = FPOD
+ws.Range("K" & d) = Volume
+
+
+If rateColumn2 = 0 Then
+
+If st20 <> "" Then
+    ws.Range("G" & d).Formula = "=IF(AND($N$2=""Y"",$O$2=""Y"")," & CLng(st20) & "+" & amountBAF & "+" & Cells(i, DTHC).Value & ",IF($N$2=""Y""," & CLng(st20) & "+" & amountBAF & ",IF($O$2=""Y""," & CLng(st20) & "+" & Cells(i, DTHC).Value & "," & CLng(st20) & ")))"
+End If
+If st40 <> "" Then
+    ws.Range("H" & d).Formula = "=IF(AND($N$2=""Y"",$O$2=""Y"")," & CLng(st40) & "+" & amountBAF & "+" & Cells(i, DTHC).Value & ",IF($N$2=""Y""," & CLng(st40) & "+" & amountBAF & ",IF($O$2=""Y""," & CLng(st40) & "+" & Cells(i, DTHC).Value & "," & CLng(st40) & ")))"
+End If
+If hc40 <> "" Then
+    ws.Range("I" & d).Formula = "=IF(AND($N$2=""Y"",$O$2=""Y"")," & CLng(hc40) & "+" & amountBAF & "+" & Cells(i, DTHC).Value & ",IF($N$2=""Y""," & CLng(hc40) & "+" & amountBAF & ",IF($O$2=""Y""," & CLng(hc40) & "+" & Cells(i, DTHC).Value & "," & CLng(hc40) & ")))"
+End If
+If hc45 <> "" Then
+    ws.Range("J" & d).Formula = "=IF(AND($N$2=""Y"",$O$2=""Y"")," & CLng(hc45) & "+" & amountBAF & "+" & Cells(i, DTHC).Value & ",IF($N$2=""Y""," & CLng(hc45) & "+" & amountBAF & ",IF($O$2=""Y""," & CLng(hc45) & "+" & Cells(i, DTHC).Value & "," & CLng(hc45) & ")))"
+End If
+
+Else
+
+ws.Range("G" & d).Formula = "=IF(AND($N$2=""Y"",$O$2=""Y"")," & CLng(st20) & "+" & amountBAF & "+" & Cells(i, DTHC).Value & ",IF($N$2=""Y""," & CLng(st20) & "+" & amountBAF & ",IF($O$2=""Y""," & CLng(st20) & "+" & Cells(i, DTHC).Value & "," & CLng(st20) & ")))"
+ws.Range("H" & d).Formula = "=IF(AND($N$2=""Y"",$O$2=""Y"")," & CLng(st40) & "+" & amountBAF2 & "+" & Cells(i, DTHC2).Value & ",IF($N$2=""Y""," & CLng(st40) & "+" & amountBAF2 & ",IF($O$2=""Y""," & CLng(st40) & "+" & Cells(i, DTHC2).Value & "," & CLng(st40) & ")))"
+ws.Range("I" & d).Formula = "=IF(AND($N$2=""Y"",$O$2=""Y"")," & CLng(hc40) & "+" & amountBAF2 & "+" & Cells(i, DTHC2).Value & ",IF($N$2=""Y""," & CLng(hc40) & "+" & amountBAF2 & ",IF($O$2=""Y""," & CLng(hc40) & "+" & Cells(i, DTHC2).Value & "," & CLng(hc40) & ")))"
+
+End If
+
+If POR = "" Then
+    ws.Range("F" & d) = "CY"
+Else
+    ws.Range("F" & d) = Cells(i, Range("A3:CC3").Find(What:="ORIGIN ROUTING", LookAt:=xlWhole, SearchOrder:=xlByColumns).Column)
+End If
+
+If FPOD = "" Then
+    ws.Range("F" & d) = ws.Range("F" & d) & ",CY"
+Else
+    ws.Range("F" & d) = ws.Range("F" & d) & "," & Cells(i, Range("A3:CC3").Find(What:="ON CAR MODE", LookAt:=xlWhole, SearchOrder:=xlByColumns).Column)
+End If
+
+ws.Range("A" & d) = "=CONCAT($B" & d & ",$C" & d & ",$D" & d & ",$E" & d & ")"
+
+Skip:
+d = d + 1
+i = i + 1
+Loop
+
+
+'PART 2
+d = 2
+Do Until ws.Range("A" & d) = "" Or IsEmpty(ws.Range("A" & d)) = True
+    d = d + 1
+Loop
+d = d - 1
+
+ws.Range("A1:K" & d).Sort Key1:=ws.Range("A1:A" & d), Order1:=xlAscending, header:=xlYes
+
+d = 2
+
+Do Until ws.Range("C" & d) = "" Or IsEmpty(ws.Range("C" & d)) = True
+
+Select Case ws.Range("B" & d) & ws.Range("C" & d) & ws.Range("D" & d) & ws.Range("E" & d) & ws.Range("F" & d) & ws.Range("L" & d)
+Case Is = ws.Range("B" & d + 1) & ws.Range("C" & d + 1) & ws.Range("D" & d + 1) & ws.Range("E" & d + 1) & ws.Range("F" & d + 1) & ws.Range("L" & d + 1)
+    If ws.Range("G" & d) = "" Then
+        If ws.Range("H" & d) = "" Then
+            ws.Range("G" & d).Formula = ws.Range("G" & d + 1).Formula
+            ws.Range("H" & d).Formula = ws.Range("H" & d + 1).Formula
+            ws.Range("I" & d).Formula = ws.Range("I" & d + 1).Formula
+            ws.Range("K" & d) = ws.Range("K" & d).Value + ws.Range("K" & d + 1).Value
+            ws.Range("A" & d + 1).EntireRow.Delete
+        Else
+            If ws.Range("H" & d) = ws.Range("I" & d + 1) Then
+                ws.Range("K" & d) = ws.Range("K" & d).Value + ws.Range("K" & d + 1).Value
+                ws.Range("A" & d + 1).EntireRow.Delete
+            Else
+                If ws.Range("G" & d + 1) = "" Then
+                    If ws.Range("J" & d + 1) = "" Then
+                        ws.Range("I" & d).Formula = ws.Range("I" & d + 1).Formula
+                        ws.Range("K" & d) = ws.Range("K" & d).Value + ws.Range("K" & d + 1).Value
+                        ws.Range("A" & d + 1).EntireRow.Delete
+                    Else
+                        ws.Range("J" & d) = ws.Range("J" & d + 1)
+                        ws.Range("K" & d) = ws.Range("K" & d).Value + ws.Range("K" & d + 1).Value
+                        ws.Range("A" & d + 1).EntireRow.Delete
+                    End If
+                
+                Else
+                    ws.Range("G" & d).Formula = ws.Range("G" & d + 1).Formula
+                    ws.Range("K" & d) = ws.Range("K" & d).Value + ws.Range("K" & d + 1).Value
+                    ws.Range("A" & d + 1).EntireRow.Delete
+                End If
+                
+            End If
+        End If
+        
+    ElseIf ws.Range("H" & d) = "" Then
+        ws.Range("H" & d).Formula = ws.Range("H" & d + 1).Formula
+        ws.Range("I" & d).Formula = ws.Range("I" & d + 1).Formula
+        ws.Range("J" & d).Formula = ws.Range("J" & d + 1).Formula
+        ws.Range("K" & d) = ws.Range("K" & d).Value + ws.Range("K" & d + 1).Value
+        ws.Range("A" & d + 1).EntireRow.Delete
+        
+    ElseIf ws.Range("J" & d) = "" Then
+        ws.Range("J" & d).Formula = ws.Range("J" & d + 1).Formula
+        ws.Range("K" & d) = ws.Range("K" & d).Value + ws.Range("K" & d + 1).Value
+        ws.Range("A" & d + 1).EntireRow.Delete
+    End If
+Case Else
+    d = d + 1
+End Select
+
+Loop
+
+Application.ScreenUpdating = True
+
+ws.Activate
+ws.Columns("B:K").EntireColumn.AutoFit
+
+
+MacroExit:
+
+End Sub
