@@ -1,0 +1,397 @@
+Sub Current_Contract_Rates()
+
+Dim wb As Workbook
+Dim ws As Worksheet
+Set wb = Excel.ActiveWorkbook
+Set ws = wb.Worksheets("CONTRACT")
+
+If ws.Range("O1") = "" Then
+    MsgBox "Please enter a contract name into O1."
+    GoTo MacroExit
+End If
+
+Dim twb As Workbook
+Set twb = Excel.Workbooks(ws.Range("O1").Value)
+
+Dim rowHeader As String
+Dim RC As Integer
+Dim conditionsStart As Integer
+Dim conditionsEnd As Integer
+Dim groupCodeStart As Integer
+Dim groupCodeEnd As Integer
+
+Dim Bullet As String
+Dim POR As String
+Dim POL As String
+Dim POD As String
+Dim FPOD As String
+Dim Mode As String
+Dim st20 As String
+Dim st40 As String
+Dim hc40 As String
+Dim hc45 As String
+
+Dim t As Integer
+Dim i As Integer
+Dim r As Integer
+Dim d As Integer
+Dim a As Integer
+Dim sheetCount As Integer
+Dim compareColumn As Integer
+Dim contractColumn As Integer
+
+Dim POL_Result() As String
+Dim POL_TextString As String
+
+Application.ScreenUpdating = False
+
+twb.Activate
+
+d = 2
+sheetCount = Worksheets.Count
+a = 1
+
+Do Until sheetCount = 0
+
+    If Left(Worksheets(a).Name, 8) = "APPENDIX" And Mid(Worksheets(a).Name, 15, 2) = "US" And Mid(Worksheets(a).Name, 10, 1) <> "P" Then
+
+Worksheets(a).Activate
+
+
+
+'Get the range for the Rate Conditions
+conditionsStart = Range("C:C").Find(What:="POL").Row
+conditionsEnd = 1
+Do Until IsEmpty(Cells(conditionsStart, conditionsEnd)) = True
+    conditionsEnd = conditionsEnd + 1
+Loop
+conditionsEnd = conditionsEnd - 1
+
+
+'Setting the range for the Port Groups.
+group_codes_start = Range("A:A").Find(What:="Port Group Codes").Row
+i = group_codes_start
+Do Until Range("A" & i) = ""
+    i = i + 1
+Loop
+group_codes_end = i - 1
+
+i = conditionsStart + 2
+
+
+Do Until IsEmpty(Range("A" & i)) = True
+
+'Skip Line if expired
+Dim effDate As Date
+Dim expDate As Date
+effDate = Cells(i, Range("A" & conditionsStart & ":CC" & conditionsStart).Find(What:="Effective Date", SearchOrder:=xlByColumns, MatchCase:=False).Column)
+expDate = Cells(i, Range("A" & conditionsStart & ":CC" & conditionsStart).Find(What:="Expiration Date", SearchOrder:=xlByColumns, MatchCase:=False).Column)
+
+If effDate = "12:00:00 AM" Then
+    effDate = Date - 1
+End If
+If expDate = "12:00:00 AM" Then
+    expDate = Date + 1
+End If
+
+If effDate < Date And expDate > Date Then
+    
+Else
+    GoTo Expired
+End If
+
+
+    Bullet = Trim(Range("A" & i))
+    POR = Trim(Range("B" & i))
+    POL = Trim(Range("C" & i))
+    POD = Trim(Range("D" & i))
+    FPOD = Trim(Range("E" & i))
+    Mode = Trim(Range("F" & i))
+    st20 = Trim(Range("I" & i))
+    st40 = Trim(Range("J" & i))
+    hc40 = Trim(Range("K" & i))
+    hc45 = Trim(Range("L" & i))
+
+Select Case conditionsEnd
+Case Is = 12
+    r = 0
+Case Else
+    r = conditionsEnd - 12
+End Select
+
+
+ws.Range("A" & d) = "=CONCAT($D" & d & ",$E" & d & ",$F" & d & ",$G" & d & ")"
+ws.Range("B" & d) = Mid(Worksheets(a).Name, 10, 3)
+ws.Range("C" & d) = Bullet
+ws.Range("D" & d) = POR
+ws.Range("E" & d) = POL
+ws.Range("F" & d) = POD
+ws.Range("G" & d) = FPOD
+ws.Range("H" & d) = Mode
+ws.Range("I" & d) = st20
+ws.Range("J" & d) = st40
+ws.Range("K" & d) = hc40
+ws.Range("L" & d) = hc45
+
+
+
+
+compareColumn = 13
+contractColumn = 13
+Do Until r = 0
+
+    Select Case IsEmpty(Cells(i, contractColumn))
+    
+    Case Is = True
+    
+        contractColumn = contractColumn + 1
+        r = r - 1
+        
+    Case Is = False
+    
+    ws.Cells(d, compareColumn).Value = Cells(conditionsStart, contractColumn) & " (" & Cells(conditionsStart + 1, contractColumn) & "):  " & Cells(i, contractColumn).Value
+
+contractColumn = contractColumn + 1
+compareColumn = compareColumn + 1
+r = r - 1
+    
+    End Select
+    
+Loop
+
+   'Take care of the Port Group Codes
+If Range("A" & group_codes_start & ":A" & group_codes_end).Find(What:=POL) Is Nothing Then
+     
+Else
+
+    POL_TextString = Range("B" & Range("A" & group_codes_start & ":A" & group_codes_end).Find(What:=POL).Row)
+    POL_Result = Split(POL_TextString, ",")
+    
+    t = UBound(POL_Result)
+    
+Do Until t < 0
+    
+    ws.Range("E" & d) = Trim(POL_Result(t))
+      
+   If wb.Worksheets("Port Codes").Range("B:B").Find(What:=ws.Range("E" & d), LookAt:=xlWhole) Is Nothing Then
+    
+    Else
+    
+        ws.Range("E" & d) = wb.Worksheets("Port Codes").Range("A" & wb.Worksheets("Port Codes").Range("B:B").Find(What:=ws.Range("E" & d), LookAt:=xlWhole).Row)
+        
+    End If
+    
+    
+
+        If t <> 0 Then
+        ws.Range("A" & d & ":AA" & d).Copy
+        ws.Range("A" & d + 1 & ":AA" & d + 1).PasteSpecial
+        d = d + 1
+        End If
+        
+        t = t - 1
+        'd = d + 1
+        
+        'ws.Range("E" & d) = Trim(POL_Result(t))
+    
+Loop
+    
+    
+End If
+
+d = d + 1
+Expired:
+i = i + 1
+Loop
+
+'Check Tank Rates
+conditionsStart = Range("N:N").Find(What:="OOG").Row
+i = conditionsStart + 2
+conditionsEnd = 14
+Do Until IsEmpty(Cells(conditionsStart, conditionsEnd)) = True
+    conditionsEnd = conditionsEnd + 1
+Loop
+conditionsEnd = conditionsEnd - 1
+
+Do Until IsEmpty(Range("A" & i)) = True
+
+If Range("M" & i) = "TK" Then
+
+Bullet = Trim(Range("A" & i))
+POR = Trim(Range("B" & i))
+POL = Trim(Range("C" & i))
+POD = Trim(Range("D" & i))
+FPOD = Trim(Range("E" & i))
+Mode = Trim(Range("F" & i))
+st20 = Trim(Range("I" & i))
+st40 = Trim(Range("J" & i))
+hc40 = Trim(Range("K" & i))
+hc45 = Trim(Range("L" & i))
+
+ws.Range("A" & d) = "=CONCAT($D" & d & ",$E" & d & ",$F" & d & ",$G" & d & ")"
+ws.Range("B" & d) = Mid(Worksheets(a).Name, 10, 3)
+ws.Range("C" & d) = Bullet
+ws.Range("D" & d) = POR
+ws.Range("E" & d) = POL
+ws.Range("F" & d) = POD
+ws.Range("G" & d) = FPOD
+ws.Range("H" & d) = Mode
+ws.Range("I" & d) = st20
+ws.Range("J" & d) = st40
+ws.Range("K" & d) = hc40
+ws.Range("L" & d) = hc45
+ws.Range("M" & d) = "TK"
+
+Select Case conditionsEnd
+Case Is = 18
+    r = 13
+Case Else
+    r = conditionsEnd - 13
+End Select
+
+compareColumn = 14
+contractColumn = 14
+Do Until r = 0
+
+    Select Case IsEmpty(Cells(i, contractColumn))
+    
+    Case Is = True
+    
+        contractColumn = contractColumn + 1
+        r = r - 1
+        
+    Case Is = False
+    
+    ws.Cells(d, compareColumn).Value = Cells(conditionsStart, contractColumn) & " (" & Cells(conditionsStart + 1, contractColumn) & "):  " & Cells(i, contractColumn).Value
+
+contractColumn = contractColumn + 1
+compareColumn = compareColumn + 1
+r = r - 1
+    
+    End Select
+    
+Loop
+
+End If
+
+    'Take care of the Port Group Codes
+If Range("A" & group_codes_start & ":A" & group_codes_end).Find(What:=POL) Is Nothing Then
+     
+Else
+
+    POL_TextString = Range("B" & Range("A" & group_codes_start & ":A" & group_codes_end).Find(What:=POL).Row)
+    POL_Result = Split(POL_TextString, ",")
+    
+    t = UBound(POL_Result)
+    
+    ws.Range("E" & d) = Trim(POL_Result(t))
+    
+    If IsError(Application.WorksheetFunction.VLookup(ws.Range("E" & d), wb.Worksheets("Port Codes").Range("B:B"), 1, 0)) = True Then
+    Else
+        ws.Range("E" & d) = wb.Range("A" & Application.WorksheetFunction.VLookup(ws.Range("E" & d), wb.Worksheets("Port Codes").Range("E" & d), 1, True).Row)
+    End If
+    
+    
+    
+    
+    Do Until t = 0
+    
+        ws.Range("A" & d & ":AA" & d).Copy
+        ws.Range("A" & d + 1 & ":AA" & d + 1).PasteSpecial
+        
+        t = t - 1
+        d = d + 1
+        
+        ws.Range("E" & d) = Trim(POL_Result(t))
+    
+    Loop
+    
+    
+End If
+
+d = d + 1
+i = i + 1
+
+Loop
+
+
+    End If
+    
+
+'Loop to Next Sheet
+sheetCount = sheetCount - 1
+a = a + 1
+Loop
+
+
+'Make POL and POD port codes
+d = 2
+Do Until IsEmpty(ws.Range("E" & d)) = True
+    d = d + 1
+Loop
+d = d - 1
+
+Do Until d = 1
+    If wb.Worksheets("Port Codes").Range("B:B").Find(What:=ws.Range("E" & d), LookAt:=xlWhole) Is Nothing Then
+    
+    Else
+        ws.Range("E" & d) = wb.Worksheets("Port Codes").Cells(wb.Worksheets("Port Codes").Range("B:B").Find(What:=ws.Range("E" & d), LookAt:=xlWhole).Row, 1).Value
+    End If
+    
+    If wb.Worksheets("Port Codes").Range("E:E").Find(What:=ws.Range("F" & d), LookAt:=xlWhole) Is Nothing Then
+    
+    Else
+        ws.Range("F" & d) = wb.Worksheets("Port Codes").Cells(wb.Worksheets("Port Codes").Range("E:E").Find(What:=ws.Range("F" & d), LookAt:=xlWhole).Row, 4).Value
+    End If
+    
+    d = d - 1
+Loop
+
+
+'Import Note 2
+sheetCount = Worksheets.Count
+a = 1
+
+d = 2
+Do Until IsEmpty(ws.Range("A" & d)) = True
+    d = d + 1
+Loop
+d = d + 2
+
+ws.Range("B" & d) = "BAF"
+ws.Range("C" & d) = "DTHC"
+d = d + 1
+
+Do Until sheetCount = 0
+
+
+    If Left(Worksheets(a).Name, 8) = "APPENDIX" And Mid(Worksheets(a).Name, 15, 2) = "US" And Mid(Worksheets(a).Name, 10, 1) <> "P" Then
+
+        Worksheets(a).Activate
+
+        i = Range("A:A").Find(What:="BAF", LookAt:=xlWhole).Row
+        ws.Range("A" & d) = Mid(Worksheets(a).Name, 10, 3)
+        ws.Range("B" & d) = Range("E" & i)
+        i = Range("A:A").Find(What:="DTHC", LookAt:=xlWhole).Row
+        ws.Range("C" & d) = Range("E" & i)
+        
+        d = d + 1
+
+    End If
+    
+    sheetCount = sheetCount - 1
+    a = a + 1
+
+
+'Loop for importing Note 2
+Loop
+
+MacroExit:
+
+ws.Activate
+ws.Columns("B:AA").EntireColumn.AutoFit
+
+Application.ScreenUpdating = True
+
+
+End Sub
